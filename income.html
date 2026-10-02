@@ -1,0 +1,308 @@
+<!-- Cashvista - Income Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cashvista – Income Inflows</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/images/favicon.svg">
+  <!-- SEO / Social -->
+  <meta name="description" content="Cashvista – Log and manage your income inflows by category and account.">
+  <meta property="og:title" content="Cashvista – Income Inflows">
+  <meta property="og:image" content="assets/images/favicon.svg">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50:  '#E6F4F3',
+              100: '#CCE9E7',
+              600: '#00D9A3',
+              700: '#00B989',
+              800: '#0F3D3A',
+              900: '#0A2B29',
+            },
+            success: '#00D9A3',
+            danger:  '#FF5C5C',
+            warning: '#F59E0B',
+            info:    '#3B82F6'
+          },
+          borderRadius: {
+            '2xl': '1rem',
+            '3xl': '1.5rem',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="overflow-x-hidden">
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app-container" class="min-h-screen flex flex-col md:flex-row">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-full md:w-64 text-slate-300 flex flex-col shrink-0" style="background:linear-gradient(180deg,#0F3D3A 0%,#145249 60%,#0F3D3A 100%)">
+      <div class="h-16 flex items-center px-5 border-b border-slate-800 gap-3">
+        <img src="assets/images/favicon.svg" alt="" class="cv-logo-icon" aria-hidden="true">
+        <span class="cv-brand-name">Cashvista</span>
+      </div>
+
+      <nav class="flex-1 px-4 py-6 space-y-7 overflow-y-auto">
+        <div class="space-y-1">
+          <p class="px-2 text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Main Menu</p>
+          <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+          </a>
+          <a href="income.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition bg-slate-800 text-white shadow">
+            <i data-lucide="trending-up" class="w-5 h-5 text-success"></i> Income
+          </a>
+          <a href="expense.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="trending-down" class="w-5 h-5 text-danger"></i> Expenses
+          </a>
+          <a href="budget.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="piggy-bank" class="w-5 h-5 text-warning"></i> Budgets
+          </a>
+          <a href="account.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="wallet" class="w-5 h-5 text-info"></i> Accounts
+          </a>
+          <a href="reports.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i> Reports & Audits
+          </a>
+        </div>
+
+        <div class="space-y-1">
+          <p class="px-2 text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">System & Settings</p>
+          <a href="settings.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition hover:bg-slate-800 hover:text-white">
+            <i data-lucide="settings" class="w-5 h-5"></i> Settings
+          </a>
+          <a href="#" onclick="handleLogout()" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition text-rose-400 hover:bg-rose-950/30 hover:text-rose-300">
+            <i data-lucide="log-out" class="w-5 h-5"></i> Log Out
+          </a>
+        </div>
+
+        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 mt-8 space-y-3">
+          <div class="flex items-center gap-2 text-white font-semibold text-xs uppercase tracking-wider">
+            <i data-lucide="arrow-right-left" class="w-4 h-4 text-primary-600"></i>
+            Quick Transfer
+          </div>
+          <div>
+            <select id="quick-transfer-from" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-300 mb-2"></select>
+            <select id="quick-transfer-to" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-300 mb-2"></select>
+            <input type="number" id="quick-transfer-amount" placeholder="Amount" class="w-full bg-slate-900 border border-slate-700 rounded-lg text-xs p-2 text-slate-300 mb-2 outline-none focus:border-primary-600">
+            <button onclick="handleQuickTransfer(event)" class="w-full bg-primary-600 text-white font-bold py-1.5 rounded-lg text-xs hover:bg-primary-700 active:scale-[0.98] transition">
+              Transfer Funds
+            </button>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="flex-1 flex flex-col min-w-0">
+      
+      <!-- TOP NAVBAR -->
+      <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 relative">
+        <div class="flex items-center gap-3">
+          <button id="mobile-menu-btn" class="md:hidden p-2 hover:bg-slate-100 rounded-lg text-slate-600">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+          <span id="navbar-view-title" class="text-lg font-bold text-slate-800">Income Inflow Records</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <button onclick="toggleNotificationDrawer()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-full relative">
+              <i data-lucide="bell" class="w-5 h-5"></i>
+              <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full hidden"></span>
+            </button>
+            
+            <div id="notif-panel" class="hidden absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h4 class="font-bold text-slate-800">Notifications & Alerts</h4>
+                <button onclick="markAllNotificationsRead()" class="text-xs text-primary-600 hover:underline">Mark read</button>
+              </div>
+              <div id="notif-list" class="max-h-72 overflow-y-auto divide-y divide-slate-50"></div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 border-l pl-4 border-slate-200">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow" style="background:#0F3D3A">
+              <span id="nav-user-initials">U</span>
+            </div>
+            <div class="hidden sm:block">
+              <div id="nav-user-name" class="text-sm font-semibold text-slate-800">Demo User</div>
+              <div class="text-xs text-slate-400">Regular Account</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ACTIVE PAGE VIEW CONTENT -->
+      <div id="page-content" class="flex-grow p-6 overflow-y-auto space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-800">Income Inflow Records</h2>
+            <p class="text-slate-500 text-sm">Log and manage salary, freelance, investments, and other cash inflows.</p>
+          </div>
+          <button onclick="openTransactionModal('income')" class="bg-gradient-to-r from-success to-emerald-600 text-white font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 hover:shadow-lg hover:shadow-success/20 active:scale-[0.98] transition">
+            <i data-lucide="plus-circle" class="w-5 h-5"></i> Log Income Inflow
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/60 space-y-4">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm divide-y divide-slate-100">
+              <thead>
+                <tr class="text-slate-400 font-semibold">
+                  <th class="py-3">Date</th>
+                  <th class="py-3">Description</th>
+                  <th class="py-3">Category</th>
+                  <th class="py-3">Account</th>
+                  <th class="py-3">Notes</th>
+                  <th class="py-3 text-right">Amount</th>
+                  <th class="py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="income-table-body" class="divide-y divide-slate-50 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- FLOATING AI CHATBOT WIDGET -->
+  <div id="ai-chatbot" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div id="chat-panel" class="hidden w-96 h-[500px] bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col mb-4 overflow-hidden transform scale-95 opacity-0 origin-bottom-right transition-all duration-300">
+      <div class="bg-gradient-to-r from-slate-900 via-primary-900 to-slate-900 p-4 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-md">
+            <i data-lucide="sparkles" class="w-5 h-5 animate-pulse-slow"></i>
+          </div>
+          <div>
+            <h4 class="font-extrabold text-sm tracking-wide">Cashvista AI Assistant</h4>
+            <span class="text-[10px] text-primary-100 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Live Helper
+            </span>
+          </div>
+        </div>
+        <button onclick="toggleChatbot()" class="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50 text-sm">
+        <div class="flex items-start gap-2">
+          <div class="w-7 h-7 bg-slate-800 text-white rounded-lg flex items-center justify-center shrink-0">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div class="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-3 text-slate-700 shadow-sm max-w-[80%] leading-relaxed">
+            Hi! I am the <b>Cashvista Assistant</b>. I can inspect your live accounts, transactions, and budgets to answer questions.
+            <div class="text-[10px] text-slate-400 mt-2">💡 Try asking: "Am I over budget?" or "Compare my income vs expenses"</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-slate-200/80 bg-white flex flex-col gap-2">
+        <div class="flex gap-1.5 overflow-x-auto pb-1 text-[11px] text-slate-500 font-semibold whitespace-nowrap">
+          <button onclick="sendQuickPrompt('Compare my income vs expenses')" class="px-2.5 py-1 bg-slate-100 rounded-full hover:bg-slate-200 transition">📊 Compare Income vs Expenses</button>
+          <button onclick="sendQuickPrompt('Am I over budget?')" class="px-2.5 py-1 bg-slate-100 rounded-full hover:bg-slate-200 transition">🚨 Am I over budget?</button>
+          <button onclick="sendQuickPrompt('Show my balances')" class="px-2.5 py-1 bg-slate-100 rounded-full hover:bg-slate-200 transition">💰 Account Balances</button>
+          <button onclick="sendQuickPrompt('Forecast my savings')" class="px-2.5 py-1 bg-slate-100 rounded-full hover:bg-slate-200 transition">🔮 Forecast Savings</button>
+        </div>
+
+        <form id="chat-form" onsubmit="handleSendChat(event)" class="flex gap-2">
+          <input type="text" id="chat-input" placeholder="Ask about food spend, savings, tips..." class="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-primary-600 transition">
+          <button type="submit" class="bg-primary-600 text-white p-2.5 rounded-xl hover:bg-primary-700 active:scale-95 transition shrink-0">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <button onclick="toggleChatbot()" class="w-14 h-14 bg-gradient-to-tr from-slate-900 to-primary-800 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-primary-700/30 hover:scale-105 active:scale-95 transition duration-200 relative group">
+      <i data-lucide="sparkles" class="w-6 h-6 animate-pulse-slow"></i>
+      <span class="absolute right-16 bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow-md">
+        Ask Cashvista Assistant
+      </span>
+    </button>
+  </div>
+
+  <!-- TRANSACTION CRUD MODAL -->
+  <div id="tx-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-md p-6 relative overflow-hidden shadow-2xl">
+      <div class="flex justify-between items-center mb-4 border-b pb-3">
+        <h3 id="tx-modal-title" class="text-lg font-bold text-slate-800">Log Transaction</h3>
+        <button onclick="closeModal('tx-modal')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form id="tx-form" onsubmit="handleTransactionSubmit(event)">
+        <input type="hidden" id="tx-id">
+        <input type="hidden" id="tx-type">
+        <div class="space-y-4 text-sm text-slate-700">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Description / Title</label>
+            <input type="text" id="tx-description" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition" placeholder="e.g. Salary Inflow">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Category</label>
+              <select id="tx-category" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition"></select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Asset Wallet</label>
+              <select id="tx-account" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition"></select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Amount</label>
+              <input type="number" step="0.01" min="0.01" id="tx-amount" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition" placeholder="0.00">
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Date</label>
+              <input type="date" id="tx-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Private Notes</label>
+            <textarea id="tx-notes" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-primary-600 transition h-16" placeholder="Additional notes..."></textarea>
+          </div>
+          <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl active:scale-[0.98] transition">
+            Save Transaction Log
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Shared confirm modal -->
+  <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-sm p-6 relative overflow-hidden shadow-2xl space-y-4">
+      <div class="flex items-center gap-3 text-danger">
+        <div class="p-2 bg-red-50 rounded-xl"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
+        <h3 class="text-lg font-bold text-slate-800">Confirm Deletion</h3>
+      </div>
+      <p class="text-sm text-slate-500 leading-relaxed">Are you sure you want to permanently delete this transaction record? This action cannot be undone.</p>
+      <div class="flex gap-3 pt-2">
+        <button id="confirm-cancel-btn" class="flex-1 bg-slate-50 border border-slate-200 font-bold py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">Cancel</button>
+        <button id="confirm-ok-btn" class="flex-grow bg-danger hover:bg-red-700 text-white font-bold py-2.5 rounded-xl hover:shadow-lg hover:shadow-red-600/20 active:scale-[0.98] transition">Delete Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/script.js"></script>
+  <script src="js/income.js"></script>
+</body>
+</html>

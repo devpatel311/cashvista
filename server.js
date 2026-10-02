@@ -461,6 +461,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({
+      message: 'User registered successfully',
       token,
       user: { id: user._id, username: user.username, email: user.email, currency: user.currency, theme: user.theme }
     });
@@ -695,6 +696,207 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ----------------------------------------------------
+// AI CHATBOT ROUTE  (context-aware financial advisor)
+// ----------------------------------------------------
+app.post('/api/chatbot/ask', authenticateToken, async (req, res) => {
+  try {
+    const { question, history } = req.body;
+
+    // Accept 'question' (primary) or legacy 'prompt'
+    const userMessage = (typeof question === 'string' && question.trim())
+      || (typeof req.body.prompt === 'string' && req.body.prompt.trim());
+
+    if (!userMessage) {
+      return res.status(400).json({ error: 'question is required.' });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_GEMINI_API_KEY') {
+      const msg = 'Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file.';
+      return res.json({ answer: msg, reply: msg });
+    }
+
+    // ── Fetch user's live financial data ─────────────────────────
+    const userId = req.user._id;
+    const userCurrencySymbol = req.user.currency || '₹';
+
+    // Map legacy symbol → ISO code for display
+    const symbolToCode = { '₹': 'INR', '$': 'USD', '€': 'EUR', '£': 'GBP' };
+    const currencyCode = symbolToCode[userCurrencySymbol] || userCurrencySymbol;
+
+    const [transactions, accounts, budgets] = await Promise.all([
+      dbService.getTransactions(userId),
+      dbService.getAccounts(userId),
+      dbService.getBudgets(userId)
+    ]);
+
+    // Limit to most recent 75 transactions to stay within prompt token limits
+    const recentTxs = transactions.slice(0, 75);
+
+    // ── Compute summary figures ───────────────────────────────────
+    const totalIncome   = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const netCashFlow   = totalIncome - totalExpenses;
+    const totalBalance  = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+
+    const fmt = (n) => `${userCurrencySymbol}${Number(n).toFixed(2)}`;
+
+    // ── Format accounts summary ───────────────────────────────────
+    const accountsSummary = accounts.length
+      ? accounts.map(a =>
+          `  • ${a.name} (${a.type}): ${a.currency || currencyCode} ${Number(a.balance || 0).toFixed(2)}`
+        ).join('\n')
+      : '  No accounts on record.';
+
+    // ── Format recent transactions (latest 8 for fast prompt processing) ──────
+    const txDisplay = recentTxs.slice(0, 8);
+    const recentTransactionsSummary = txDisplay.length
+      ? txDisplay.map(t => {
+          const d = new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          return `  • [${d}] ${t.type.toUpperCase()} | ${t.category} | ${t.description || '—'} | ${fmt(t.amount)} | ${t.account}`;
+        }).join('\n')
+      : '  No transactions recorded.';
+
+    // ── Format budgets summary ────────────────────────────────────
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    const activeBudgets = budgets.filter(b => b.month === currentMonth);
+    const budgetsSummary = activeBudgets.length
+      ? activeBudgets.map(b => {
+          const spent = transactions
+            .filter(t => t.type === 'expense' && t.category === b.category
+                      && new Date(t.date).toISOString().substring(0, 7) === currentMonth)
+            .reduce((s, t) => s + t.amount, 0);
+          const pct  = b.amount > 0 ? Math.round((spent / b.amount) * 100) : 0;
+          const left = Math.max(0, b.amount - spent);
+          return `  • ${b.category}: limit ${fmt(b.amount)}, spent ${fmt(spent)} (${pct}%), remaining ${fmt(left)}`;
+        }).join('\n')
+      : '  No budgets set for the current month.';
+
+    // ── Category breakdown (top 5 expense categories) ────────────
+    const catMap = {};
+    transactions.filter(t => t.type === 'expense').forEach(t => {
+      catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+    });
+    const topCategories = Object.entries(catMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cat, amt]) => `  • ${cat}: ${fmt(amt)}`)
+      .join('\n') || '  None.';
+
+    // ── System context prompt ─────────────────────────────────────
+    const financialContext = `You are Cashvista AI, a smart and friendly personal financial advisor integrated directly into the user's finance dashboard. You have FULL access to the user's real financial records below. Answer every question using ONLY their actual data — never say you lack access to their information.
+
+══════════════════════════════════════════
+USER FINANCIAL SNAPSHOT  (as of ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})
+══════════════════════════════════════════
+Currency       : ${currencyCode} (${userCurrencySymbol})
+Total Balance  : ${fmt(totalBalance)}  (sum of all accounts)
+Total Income   : ${fmt(totalIncome)}
+Total Expenses : ${fmt(totalExpenses)}
+Net Cash Flow  : ${fmt(netCashFlow)}  (${netCashFlow >= 0 ? 'surplus ✅' : 'deficit ⚠️'})
+
+ACCOUNTS:
+${accountsSummary}
+
+TOP EXPENSE CATEGORIES (all time):
+${topCategories}
+
+CURRENT MONTH BUDGETS (${currentMonth}):
+${budgetsSummary}
+
+RECENT TRANSACTIONS (latest 8 of ${transactions.length} total):
+${recentTransactionsSummary}
+══════════════════════════════════════════
+
+GUIDELINES:
+- Always reference the user's actual figures and currency above.
+- Be concise, direct, and professional. Use bullet points for lists.
+- Highlight concerns (overspending, budget breaches, negative cash flow) with actionable advice.
+- If asked about specific transactions, reference exact dates, categories, and amounts.
+- Do NOT mention that you are an AI or that you are "analysing" — just answer directly.`;
+
+    // ── Sanitise conversation history ─────────────────────────────
+    const rawHistory = Array.isArray(history) ? history : [];
+    const sanitised  = [];
+    for (const h of rawHistory) {
+      if (!h) continue;
+      const role = (h.role === 'model' || h.role === 'bot') ? 'model' : 'user';
+      const text = typeof h.parts === 'string'
+        ? h.parts
+        : (Array.isArray(h.parts) ? (h.parts[0]?.text || '') : (h.message || h.text || ''));
+      if (!text.trim()) continue;
+      if (sanitised.length > 0 && sanitised[sanitised.length - 1].role === role) continue;
+      sanitised.push({ role, parts: [{ text }] });
+    }
+    while (sanitised.length > 0 && sanitised[0].role !== 'user') sanitised.shift();
+
+    // Keep history lean (last 4 items = 2 conversation turns) to minimize latency
+    const trimmedHistory = sanitised.slice(-4);
+
+    // ── Generate response with fallback model chain ───────────────
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // Prioritize fast, stable production endpoints to avoid 503 overloads
+    const MODEL_NAMES = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-flash-latest'];
+    const generationConfig = {
+      maxOutputTokens: 350,
+      temperature: 0.4
+    };
+
+    // Helper timeout to fail fast (6s per attempt) instead of hanging the user
+    const withTimeout = (promise, ms = 6000) => {
+      let timeoutId;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+      });
+      return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+    };
+
+    // Combine system context + user question into a single user message
+    // so the context is always re-injected regardless of session history
+    const fullUserMessage = `${financialContext}\n\nUser Question: ${userMessage}`;
+
+    let text = '';
+    let generated = false;
+
+    for (const modelName of MODEL_NAMES) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName, generationConfig });
+        // Inject context in a chat with existing history
+        const chat   = model.startChat({ history: trimmedHistory });
+        const result = await withTimeout(chat.sendMessage(fullUserMessage), 6000);
+        text      = result.response.text();
+        generated = true;
+        break;
+      } catch (e) {
+        console.warn(`[Chatbot] Model ${modelName} failed or timed out: ${e.message}`);
+      }
+    }
+
+    if (!generated) {
+      // Last-resort: plain generateContent with no chat history
+      for (const modelName of MODEL_NAMES) {
+        try {
+          const model  = genAI.getGenerativeModel({ model: modelName, generationConfig });
+          const result = await withTimeout(model.generateContent(fullUserMessage), 6000);
+          text      = result.response.text();
+          generated = true;
+          break;
+        } catch (_) { /* try next */ }
+      }
+    }
+
+    if (!generated) throw new Error('All Gemini models unavailable.');
+
+    return res.json({ answer: text, reply: text });
+
+  } catch (error) {
+    console.error('[Chatbot] Error:', error.message || error);
+    const msg = `Unable to generate AI response: ${error.message || 'Check your API key or quota.'}`;
+    return res.status(200).json({ answer: msg, reply: msg });
+  }
+});
+
 // Catch-all route to redirect back to index.html for unrecognized routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -702,7 +904,7 @@ app.get('*', (req, res) => {
 
 // Start Express server locally
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`🚀 Server listening on port ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server listening on http://0.0.0.0:${PORT}`));
 }
 
 module.exports = app;

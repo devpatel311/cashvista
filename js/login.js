@@ -7,6 +7,32 @@
 window.API_BASE = window.API_BASE || '/api';
 window.state = window.state || { token: localStorage.getItem('token') || '' };
 
+// ── Already-logged-in check (live token validation) ──────────
+// If a token exists in localStorage, verify it against the API.
+// Only redirect to dashboard if the token is still valid; otherwise
+// clear the stale token so the login form renders cleanly.
+(async () => {
+  const savedToken = localStorage.getItem('token');
+  if (savedToken) {
+    try {
+      const res = await fetch('/api/user/profile', {
+        headers: { 'Authorization': 'Bearer ' + savedToken }
+      });
+      if (res.ok) {
+        // Token is still valid → go straight to dashboard
+        window.location.href = 'dashboard.html';
+      } else {
+        // Token expired or invalid → clear it, let the form render
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.state.token = '';
+      }
+    } catch (_) {
+      // Network error → don't redirect, just let the form render
+    }
+  }
+})();
+
 // ── Validation constants ────────────────────────────────────
 var EMAIL_REGEX    = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 var PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!\%*?&]{8,}$/;
@@ -255,8 +281,14 @@ function setSubmitLoading(type, isLoading) {
 
 // ── Main auth submit handler ─────────────────────────────────
 async function handleAuthSubmit(e, type) {
-  e.preventDefault();
+  // Belt-and-suspenders: prevent ANY default form navigation immediately
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+
   document.getElementById('auth-error').classList.add('hidden');
+
+  // Guard: resolve API base safely
+  const apiBase = window.API_BASE || '/api';
 
   const email    = document.getElementById(`${type}-email`).value.trim();
   const password = document.getElementById(`${type}-password`).value;
@@ -267,29 +299,68 @@ async function handleAuthSubmit(e, type) {
     const confirm  = document.getElementById('register-confirm')?.value || '';
     body.username  = username;
 
-    if (!validateRegisterForm(username, email, password, confirm)) return;
+    if (!validateRegisterForm(username, email, password, confirm)) return false;
   }
 
   if (type === 'register') setSubmitLoading('register', true);
 
   try {
-    const response = await fetch(`${window.API_BASE}/auth/${type}`, {
+    console.log(`[Cashvista] Sending ${type} request…`);
+    const response = await fetch(`${apiBase}/auth/${type}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
 
     const data = await response.json();
+    console.log(`[Cashvista] ${type} response:`, response.status, data);
+
     if (!response.ok) throw new Error(data.error || 'Authentication failed.');
-    window.state.token = data.token;
-    localStorage.setItem('token', data.token);
-    window.location.href = 'dashboard.html';
+
+    if (data.token) {
+      window.state.token = data.token;
+      window.state.user = data.user || {};
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(window.state.user));
+      console.log('[Cashvista] Token stored, redirecting to dashboard…');
+      window.location.href = 'dashboard.html';
+    } else {
+      // Fallback: perform internal login using the same credentials.
+      console.log('[Cashvista] No token in response, attempting auto-login…');
+      const loginResp = await fetch(`${apiBase}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const loginData = await loginResp.json();
+      console.log('[Cashvista] auto-login response:', loginResp.status, loginData);
+      if (!loginResp.ok) throw new Error(loginData.error || 'Login after registration failed.');
+      window.state.token = loginData.token;
+      window.state.user = loginData.user || {};
+      localStorage.setItem('token', loginData.token);
+      localStorage.setItem('user', JSON.stringify(window.state.user));
+      window.location.href = 'dashboard.html';
+    }
 
   } catch (error) {
+    console.error('[Cashvista] Auth error:', error);
     document.getElementById('auth-error').classList.remove('hidden');
     document.getElementById('auth-error-msg').innerText = error.message;
     if (window.lucide) lucide.createIcons();
   } finally {
     if (type === 'register') setSubmitLoading('register', false);
   }
+
+  return false;
 }
+
+// ── Expose auth functions globally so inline onsubmit/onclick ────
+// attributes in login.html always resolve them regardless of
+// whether the browser has fully evaluated this script yet.
+window.handleAuthSubmit       = handleAuthSubmit;
+window.toggleAuthForm         = toggleAuthForm;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.validateEmailLive      = validateEmailLive;
+window.updatePasswordStrength = updatePasswordStrength;
+window.validateConfirmLive    = validateConfirmLive;
+window.clearFieldError        = clearFieldError;

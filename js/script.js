@@ -1,6 +1,6 @@
 const API_BASE = '/api';
-// Application Local State (Shared)
-const state = {
+// Application Local State (Shared) - use global window.state for consistency
+window.state = window.state || {
   token: localStorage.getItem('token') || '',
   user: null,
   transactions: [],
@@ -10,6 +10,7 @@ const state = {
   charts: {},       // Cached Chart instances
   chatHistory: []   // Conversational memory for multi-turn Gemini chat
 };
+var state = window.state;
 
 // ── Currency Utilities ────────────────────────────────────────
 /**
@@ -90,15 +91,25 @@ function getAuthHeaders() {
 }
 
 // Session Checker
+// On the login page we never redirect based on a stored token alone —
+// that token may be expired.  The redirect-to-dashboard only happens
+// AFTER a successful live API call (done inside checkAuthAsync on dashboard).
 function checkAuth() {
+  const token = localStorage.getItem('token') || '';
+  // Sync global state
+  window.state = window.state || {};
+  window.state.token = token;
   const isLoginPage = window.location.pathname.endsWith('login.html');
-  if (!state.token && !isLoginPage) {
+  // Guard non-auth pages: if no token and not on login page, redirect to login
+  if (!token && !isLoginPage) {
     window.location.href = 'login.html';
     return false;
   }
-  if (state.token && isLoginPage) {
-    window.location.href = 'dashboard.html';
-    return false;
+  // On the login page: never redirect away based solely on a cached token.
+  // An expired token would cause a fetch-failure loop. The login form handles
+  // fresh auth; let the page render normally.
+  if (isLoginPage) {
+    return false; // don't run the DOMContentLoaded boot block on login.html
   }
   return true;
 }
@@ -146,6 +157,7 @@ function handleLogout() {
   state.token = '';
   state.user = null;
   localStorage.removeItem('token');
+  localStorage.removeItem('user');
   window.location.href = 'login.html';
 }
 
@@ -331,7 +343,7 @@ async function handleSendChat(e) {
         ${question}
       </div>
       <div class="w-7 h-7 bg-primary-700 text-white rounded-lg flex items-center justify-center font-bold text-xs shrink-0">
-        ${state.user.username[0].toUpperCase()}
+        ${(state.user && state.user.username ? state.user.username[0] : 'U').toUpperCase()}
       </div>
     </div>
   `;
@@ -449,7 +461,7 @@ function customConfirm() {
 if (checkAuth()) {
   window.addEventListener('DOMContentLoaded', async () => {
     initMobileMenu();
-    
+
     if (state.token) {
       try {
         await fetchUserData();
@@ -459,7 +471,13 @@ if (checkAuth()) {
         }
       } catch (err) {
         console.error('App init failed:', err);
-        handleLogout();
+        // Only force-logout on genuine authentication errors (401/403).
+        // Network errors or page-specific init failures should NOT log the
+        // user out — that creates an infinite login.html redirect loop.
+        const msg = (err && err.message) || '';
+        if (msg.includes('Authentication check failed') || msg.includes('401') || msg.includes('403')) {
+          handleLogout();
+        }
       }
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();

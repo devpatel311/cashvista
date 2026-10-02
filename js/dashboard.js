@@ -16,6 +16,7 @@ function setDateRange(range) {
 
   renderDashboard();
 }
+window.setDateRange = setDateRange;
 
 function getFilteredTransactions() {
   const now = new Date();
@@ -129,72 +130,7 @@ function renderDashboard() {
   }
 
   // 3. Render Chart.js visual structures
-  renderDashboardCharts(filteredTxs, baseCurrency, accountCurrencyMap);
-}
-
-
-  // 1. Calculate Summary aggregates
-  const incomeTotal = filteredTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenseTotal = filteredTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const balanceTotal = state.accounts.reduce((s, a) => s + a.balance, 0);
-
-  // Render Dashboard Stat Cards
-  document.getElementById('card-income-total').innerText = `${currency}${incomeTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-  document.getElementById('card-expenses-total').innerText = `${currency}${expenseTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-  document.getElementById('card-balance-total').innerText = `${currency}${balanceTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-
-  // Budget Status calculations
-  const currentMonth = new Date().toISOString().substring(0, 7);
-  const activeBudgets = state.budgets.filter(b => b.month === currentMonth);
-  const totalBudgetLimit = activeBudgets.reduce((s, b) => s + b.amount, 0);
-  
-  const thisMonthSpent = state.transactions
-    .filter(t => t.type === 'expense' && new Date(t.date).toISOString().substring(0, 7) === currentMonth)
-    .reduce((s, t) => s + t.amount, 0);
-
-  let budgetPercent = 0;
-  let budgetText = `${currency}0.00 left`;
-  if (totalBudgetLimit > 0) {
-    budgetPercent = Math.min(100, Math.round((thisMonthSpent / totalBudgetLimit) * 100));
-    budgetText = `${currency}${Math.max(0, totalBudgetLimit - thisMonthSpent).toFixed(2)} left of ${currency}${totalBudgetLimit.toFixed(0)}`;
-  } else {
-    budgetText = 'No budgets defined';
-  }
-
-  document.getElementById('card-budget-percent').innerText = `${budgetPercent}%`;
-  document.getElementById('card-budget-progress').style.width = `${budgetPercent}%`;
-  document.getElementById('card-budget-remaining').innerHTML = `<span>${budgetText}</span>`;
-
-  // Circular Chart Sync
-  document.getElementById('circular-budget-text').innerText = `${budgetPercent}%`;
-  const circleOffset = 390 - (390 * budgetPercent) / 100;
-  document.getElementById('circular-budget-stroke').style.strokeDashoffset = circleOffset;
-  document.getElementById('utilization-spent-totals').innerText = `${currency}${thisMonthSpent.toFixed(2)} / ${currency}${totalBudgetLimit.toFixed(2)}`;
-
-  // 2. Render Recent Transactions list
-  const txBody = document.getElementById('dashboard-tx-table');
-  const recentTxs = state.transactions.slice(0, 5);
-
-  if (recentTxs.length === 0) {
-    txBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-xs text-slate-400">No transactions recorded.</td></tr>`;
-  } else {
-    txBody.innerHTML = recentTxs.map(t => {
-      const sign = t.type === 'income' ? '+' : '-';
-      const color = t.type === 'income' ? 'text-success' : 'text-danger';
-      return `
-        <tr class="hover:bg-slate-50/50 transition">
-          <td class="py-3 font-medium text-slate-400 text-xs">${new Date(t.date).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'})}</td>
-          <td class="py-3 font-semibold text-slate-800 max-w-[150px] truncate">${t.description}</td>
-          <td class="py-3"><span class="px-2 py-1 bg-slate-100 rounded-lg text-xs font-semibold text-slate-600">${t.category}</span></td>
-          <td class="py-3 text-xs text-slate-500 font-medium">${t.account}</td>
-          <td class="py-3 text-right font-bold ${color}">${sign}${currency}${t.amount.toFixed(2)}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  // 3. Render Chart.js visual structures
-  renderDashboardCharts(filteredTxs, currency);
+  renderDashboardCharts(filteredTxs, baseCurrency);
 
 }
 function renderDashboardCharts(txs, currency) {

@@ -62,7 +62,7 @@ function renderAuditsTable() {
         <td class="py-3.5"><span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs">${t.category}</span></td>
         <td class="py-3.5 text-xs text-slate-500 font-medium">${t.account}</td>
         <td class="py-3.5 text-slate-400 text-xs truncate max-w-[200px]">${t.notes || '—'}</td>
-        <td class="py-3.5 text-right font-extrabold ${color}">${sign}${currency}${t.amount.toFixed(2)}</td>
+        <td class="py-3.5 text-right font-extrabold ${color}">${sign}${currency}${Number(t.amount || 0).toFixed(2)}</td>
       </tr>
     `;
   }).join('');

@@ -23,7 +23,7 @@ function renderInflows() {
       <td class="py-3.5"><span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs">${t.category}</span></td>
       <td class="py-3.5 text-xs text-slate-500 font-medium">${t.account}</td>
       <td class="py-3.5 text-slate-400 text-xs truncate max-w-[150px]">${t.notes || '—'}</td>
-      <td class="py-3.5 text-right font-extrabold text-success">${currency}${t.amount.toFixed(2)}</td>
+      <td class="py-3.5 text-right font-extrabold text-success">${currency}${Number(t.amount || 0).toFixed(2)}</td>
       <td class="py-3.5 text-center space-x-2">
         <button onclick="editTransaction('${t._id}')" class="text-slate-400 hover:text-primary-600"><i data-lucide="edit-3" class="w-4 h-4 inline"></i></button>
         <button onclick="deleteTransaction('${t._id}')" class="text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button>

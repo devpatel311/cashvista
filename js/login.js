@@ -20,8 +20,8 @@ window.state = window.state || { token: localStorage.getItem('token') || '' };
       });
       if (res.ok) {
         // Token is still valid → go straight to dashboard
-        window.location.href = 'dashboard.html';
-      } else {
+        window.location.href = '/dashboard.html';
+      } else if (res.status === 401) {
         // Token expired or invalid → clear it, let the form render
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -321,9 +321,9 @@ async function handleAuthSubmit(e, type) {
       window.state.token = data.token;
       window.state.user = data.user || {};
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(window.state.user));
+      localStorage.setItem('user', JSON.stringify(data.user));
       console.log('[Cashvista] Token stored, redirecting to dashboard…');
-      window.location.href = 'dashboard.html';
+      window.location.href = '/dashboard.html';
     } else {
       // Fallback: perform internal login using the same credentials.
       console.log('[Cashvista] No token in response, attempting auto-login…');
@@ -338,8 +338,8 @@ async function handleAuthSubmit(e, type) {
       window.state.token = loginData.token;
       window.state.user = loginData.user || {};
       localStorage.setItem('token', loginData.token);
-      localStorage.setItem('user', JSON.stringify(window.state.user));
-      window.location.href = 'dashboard.html';
+      localStorage.setItem('user', JSON.stringify(loginData.user));
+      window.location.href = '/dashboard.html';
     }
 
   } catch (error) {

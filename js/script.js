@@ -84,9 +84,10 @@ function getUserBaseCurrency() {
 
 // Helper: Header Auth configuration
 function getAuthHeaders() {
+  const token = localStorage.getItem('token') || (window.state && window.state.token) || '';
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${state.token}`
+    'Authorization': `Bearer ${token}`
   };
 }
 
@@ -116,8 +117,27 @@ function checkAuth() {
 
 // Fetch user settings and details
 async function fetchUserData() {
-  const res = await fetch(`${API_BASE}/user/profile`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Authentication check failed.');
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${API_BASE}/user/profile`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (res.status === 401) {
+    console.error('Session expired or unauthorized');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.replace('login.html');
+    return;
+  }
+
+  if (!res.ok) {
+    console.warn('Failed to fetch user profile, status:', res.status);
+    return;
+  }
+
   state.user = await res.json();
   
   // Update user info in navbar if present
@@ -139,10 +159,15 @@ async function fetchUserData() {
 
 // Fetch transaction/budget/account lists
 async function fetchFinancialData() {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
   const [txRes, budgetRes, accRes] = await Promise.all([
-    fetch(`${API_BASE}/transactions`, { headers: getAuthHeaders() }),
-    fetch(`${API_BASE}/budgets`, { headers: getAuthHeaders() }),
-    fetch(`${API_BASE}/accounts`, { headers: getAuthHeaders() })
+    fetch(`${API_BASE}/transactions`, { headers }),
+    fetch(`${API_BASE}/budgets`, { headers }),
+    fetch(`${API_BASE}/accounts`, { headers })
   ]);
 
   if (txRes.ok) state.transactions = await txRes.json();
@@ -471,13 +496,6 @@ if (checkAuth()) {
         }
       } catch (err) {
         console.error('App init failed:', err);
-        // Only force-logout on genuine authentication errors (401/403).
-        // Network errors or page-specific init failures should NOT log the
-        // user out — that creates an infinite login.html redirect loop.
-        const msg = (err && err.message) || '';
-        if (msg.includes('Authentication check failed') || msg.includes('401') || msg.includes('403')) {
-          handleLogout();
-        }
       }
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();

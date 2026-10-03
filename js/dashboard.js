@@ -1,6 +1,73 @@
 // Dashboard Page Specific JS
 
+// Verify the auth check
+(function() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.warn('No token found in localStorage, redirecting to login.html');
+    window.location.replace('login.html');
+    return;
+  }
+})();
+
+// Helper to ensure all API calls include Authorization header and handle 401
+async function authenticatedFetch(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+    'Authorization': `Bearer ${token}`
+  };
+
+  const response = await fetch(endpoint, {
+    ...options,
+    headers
+  });
+
+  if (response.status === 401) {
+    const isAuthCheck = endpoint.includes('/api/user/profile') || endpoint.includes('/auth/verify');
+    if (isAuthCheck) {
+      console.error('Session expired or unauthorized');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.replace('login.html');
+    }
+  }
+
+  return response;
+}
+
 async function initPage() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.warn('No token found in localStorage, redirecting to login.html');
+    window.location.replace('login.html');
+    return;
+  }
+
+  if (!state.user) {
+    try {
+      const res = await fetch('/api/user/profile', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.status === 401) {
+        console.error('Session expired or unauthorized');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.replace('login.html');
+        return;
+      }
+      if (res.ok) {
+        state.user = await res.json();
+      }
+    } catch (e) {
+      console.warn('Dashboard profile fetch warning:', e);
+    }
+  }
+
   renderDashboard();
 }
 

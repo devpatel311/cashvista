@@ -116,6 +116,7 @@ const connectWithRetry = async () => {
         console.warn('======================================================\n');
         useInMemory = true;
         seedInMemoryDatabase();
+        cached.promise = null;
         return null;
       });
   }
@@ -124,6 +125,12 @@ const connectWithRetry = async () => {
 };
 
 connectWithRetry();
+
+// Ensure DB connection is active and cached across serverless invocations
+app.use(async (req, res, next) => {
+  await connectWithRetry();
+  next();
+});
 
 // ----------------------------------------------------
 // DATABASE OPERATION ABSTRACTION LAYER
@@ -902,9 +909,10 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start Express server locally
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server listening on http://0.0.0.0:${PORT}`));
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 }
-
 module.exports = app;
